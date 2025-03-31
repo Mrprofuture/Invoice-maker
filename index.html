@@ -1,1 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Maker</title>
+    <script>
+        // Flask server code embedded here
+        const { spawn } = require('child_process');
+        const express = require('express');
+        const bodyParser = require('body-parser');
+        const { InvoiceMaker } = require('./invoice_maker');
 
+        const app = express();
+        app.use(bodyParser.urlencoded({ extended: true }));
+
+        app.get('/', (req, res) => {
+            res.sendFile(__dirname + '/index.html');
+        });
+
+        app.post('/generate_invoice', (req, res) => {
+            const shop_name = req.body.shop_name;
+            const shop_address = req.body.shop_address;
+            const shop_phone = req.body.shop_phone;
+            const customer_name = req.body.customer_name;
+            const customer_address = req.body.customer_address;
+            const items = [
+                [req.body.item1, parseInt(req.body.quantity1), parseFloat(req.body.price1)],
+                [req.body.item2, parseInt(req.body.quantity2), parseFloat(req.body.price2)],
+                [req.body.item3, parseInt(req.body.quantity3), parseFloat(req.body.price3)]
+            ];
+            const invoice_number = req.body.invoice_number;
+            const output_filename = `invoice_${invoice_number}.pdf`;
+
+            const invoice_maker = new InvoiceMaker(shop_name, shop_address, shop_phone);
+            invoice_maker.create_invoice(customer_name, customer_address, items, invoice_number, output_filename);
+
+            res.download(output_filename);
+        });
+
+        app.listen(5000, () => {
+            console.log('Server is listening on port 5000');
+        });
+
+        // Function to start the Flask server
+        function startServer() {
+            const server = spawn('python', ['app.py']);
+            server.stdout.on('data', (data) => {
+                console.log(`stdout: ${data}`);
+            });
+
+            server.stderr.on('data', (data) => {
+                console.error(`stderr: ${data}`);
+            });
+
+            server.on('close', (code) => {
+                console.log(`child process exited with code ${code}`);
+            });
+        }
+
+        // Start the server when the page loads
+        window.onload = startServer;
+    </script>
+</head>
+<body>
+    <h1>Invoice Maker</h1>
+    <form action="/generate_invoice" method="post">
+        <h2>Shop Details</h2>
+        <label for="shop_name">Shop Name:</label>
+        <input type="text" id="shop_name" name="shop_name" required><br>
+        <label for="shop_address">Shop Address:</label>
+        <input type="text" id="shop_address" name="shop_address" required><br>
+        <label for="shop_phone">Shop Phone:</label>
+        <input type="text" id="shop_phone" name="shop_phone" required><br>
+
+        <h2>Customer Details</h2>
+        <label for="customer_name">Customer Name:</label>
+        <input type="text" id="customer_name" name="customer_name" required><br>
+        <label for="customer_address">Customer Address:</label>
+        <input type="text" id="customer_address" name="customer_address" required><br>
+
+        <h2>Items</h2>
+        <label for="item1">Item 1:</label>
+        <input type="text" id="item1" name="item1" required>
+        <label for="quantity1">Quantity:</label>
+        <input type="number" id="quantity1" name="quantity1" required>
+        <label for="price1">Price:</label>
+        <input type="number" step="0.01" id="price1" name="price1" required><br>
+
+        <label for="item2">Item 2:</label>
+        <input type="text" id="item2" name="item2">
+        <label for="quantity2">Quantity:</label>
+        <input type="number" id="quantity2" name="quantity2">
+        <label for="price2">Price:</label>
+        <input type="number" step="0.01" id="price2" name="price2"><br>
+
+        <label for="item3">Item 3:</label>
+        <input type="text" id="item3" name="item3">
+        <label for="quantity3">Quantity:</label>
+        <input type="number" id="quantity3" name="quantity3">
+        <label for="price3">Price:</label>
+        <input type="number" step="0.01" id="price3" name="price3"><br>
+
+        <h2>Invoice Details</h2>
+        <label for="invoice_number">Invoice Number:</label>
+        <input type="text" id="invoice_number" name="invoice_number" required><br>
+
+        <button type="submit">Generate Invoice</button>
+    </form>
+</body>
+</html>
